@@ -1,0 +1,977 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Học tiếng Nga cùng Thảo Nguyên</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5; /* Nền màu xám nhạt */
+        }
+        .container {
+            max-width: 800px;
+        }
+        textarea {
+            resize: vertical; /* Cho phép thay đổi kích thước theo chiều dọc */
+            min-height: 150px; /* Chiều cao tối thiểu cho textarea */
+        }
+        .loading-spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left-color: #4f46e5; /* Tailwind indigo-600 */
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .clickable-word {
+            cursor: pointer;
+            @apply text-indigo-700 font-medium hover:underline;
+        }
+        .definition-item {
+            margin-bottom: 0.5rem; /* Khoảng cách giữa các mục định nghĩa */
+        }
+        /* Style for stressed Russian text - no red color, just the accent */
+        .stressed-russian-text {
+            font-size: 1.125rem; /* text-lg */
+            font-weight: 500; /* font-medium */
+            color: #1a202c; /* gray-900 */
+            white-space: pre-wrap;
+            word-break: break-words;
+            margin-top: 0.5rem;
+            padding: 0.75rem;
+            background-color: #e2e8f0; /* gray-200 */
+            border-radius: 0.375rem; /* rounded-md */
+        }
+        /* Adjusted slider styling for better alignment */
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 8px;
+            background: #d1d5db; /* gray-300 */
+            outline: none;
+            opacity: 0.7;
+            -webkit-transition: .2s;
+            transition: opacity .2s;
+            border-radius: 4px;
+        }
+        input[type="range"]:hover {
+            opacity: 1;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #4f46e5; /* indigo-600 */
+            cursor: pointer;
+            border-radius: 50%;
+            box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.3); /* focus ring effect */
+        }
+        input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            background: #4f46e5; /* indigo-600 */
+            cursor: pointer;
+            border-radius: 50%;
+            box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.3); /* focus ring effect */
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4">
+    <div class="container bg-white p-8 rounded-lg shadow-xl w-full">
+        <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">Học tiếng Nga cùng Thảo Nguyên</h1>
+
+        <div class="mb-6">
+            <label for="russianInput" class="block text-gray-700 text-sm font-medium mb-2">Nhập văn bản tiếng Nga:</label>
+            <textarea id="russianInput"
+                      class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-200"
+                      placeholder="Введите русский текст здесь... Например: Привет, как дела сегодня?"
+                      rows="6"></textarea>
+        </div>
+
+        <div class="flex flex-col sm:flex-row gap-4 mb-6">
+            <button id="convertButton"
+                    class="w-full sm:w-1/2 bg-indigo-600 text-white py-3 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition duration-200 flex items-center justify-center">
+                <span id="buttonText">Dịch & Tra từ</span>
+                <div id="loadingSpinner" class="loading-spinner ml-3 hidden"></div>
+            </button>
+            <button id="grammarCheckButton"
+                    class="w-full sm:w-1/2 bg-purple-600 text-white py-3 px-4 rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition duration-200 flex items-center justify-center">
+                <span id="grammarButtonText">✨ Kiểm tra ngữ pháp & Cải thiện câu</span>
+                <div id="grammarLoadingSpinner" class="loading-spinner ml-3 hidden"></div>
+            </button>
+        </div>
+
+        <div id="errorMessage" class="text-red-600 mt-4 hidden text-center"></div>
+
+        <!-- Grammar Check Output Section -->
+        <div id="grammarOutputContainer" class="mt-8 p-6 bg-gray-50 border border-gray-200 rounded-md hidden">
+            <h2 class="text-xl font-semibold text-gray-800 mb-3">Câu tiếng Nga đã sửa/cải thiện:</h2>
+            <p id="correctedSentenceOutput" class="text-gray-900 text-lg whitespace-pre-wrap break-words">
+                <!-- Corrected sentence will be displayed here -->
+            </p>
+            <div id="grammarErrorMessage" class="text-red-600 mt-2 hidden"></div>
+        </div>
+
+        <!-- Russian Pronunciation Section -->
+        <div id="russianPronunciationContainer" class="mt-8 p-6 bg-gray-50 border border-gray-200 rounded-md">
+            <h2 class="text-xl font-semibold text-gray-800 mb-3">Phát âm tiếng Nga:</h2>
+            <p id="stressedRussianOutput" class="stressed-russian-text hidden">
+                <!-- Stressed Russian text will be displayed here -->
+            </p>
+            <div class="flex flex-col sm:flex-row items-center justify-between mt-4 gap-4">
+                <button id="speakButton"
+                        class="w-full sm:w-auto bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition duration-200 flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM14.657 2.929a1 1 0 011.414 0A9.997 9.997 0 0119 10a9.997 9.997 0 01-2.929 7.071 1 1 0 01-1.414-1.414A7.997 7.997 0 0017 10a7.997 7.997 0 00-2.343-5.657 1 1 0 010-1.414zm-2.828 2.828a1 1 0 011.414 0A3.998 3.998 0 0115 10a3.998 3.998 0 01-1.172 2.828 1 1 0 01-1.414-1.414A1.998 1.998 0 0013 10a1.998 1.998 0 00-.586-1.414 1 1 0 010-1.414z" clip-rule="evenodd" />
+                    </svg>
+                    <span id="speakButtonText">Phát âm</span>
+                </button>
+                <div class="flex items-center gap-2 w-full sm:w-auto">
+                    <label for="voiceSelect" class="text-gray-700 text-sm font-medium">Giọng đọc:</label>
+                    <select id="voiceSelect" class="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-200 w-full sm:w-auto">
+                        <!-- Giọng đọc sẽ được tải bởi JavaScript -->
+                    </select>
+                </div>
+                <div class="flex items-center gap-2 w-full sm:w-auto">
+                    <label for="rateSlider" class="text-gray-700 text-sm font-medium">Tốc độ:</label>
+                    <input type="range" id="rateSlider" min="0.5" max="2" value="1" step="0.1" class="w-full sm:w-auto">
+                    <span id="rateValue" class="text-gray-700 text-sm font-medium">1.0x</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Vietnamese Translation Section -->
+        <div id="translationOutputContainer" class="mt-8 p-6 bg-gray-50 border border-gray-200 rounded-md">
+            <h2 class="text-xl font-semibold text-gray-800 mb-3">Dịch nghĩa tiếng Việt:</h2>
+            <p id="vietnameseTranslation" class="text-gray-900 text-lg whitespace-pre-wrap break-words">
+                <!-- Bản dịch tiếng Việt sẽ hiển thị ở đây -->
+            </p>
+        </div>
+
+        <!-- Dictionary Section -->
+        <div id="dictionarySection" class="mt-8 p-6 bg-gray-50 border border-gray-200 rounded-md">
+            <h2 class="text-xl font-semibold text-gray-800 mb-3">Tra từ điển tiếng Nga (vtudien.com):</h2>
+            <p class="text-gray-700 text-sm mb-3">Nhấp vào một từ tiếng Nga dưới đây để tra cứu nghĩa:</p>
+            <div id="clickableWordsContainer" class="flex flex-wrap gap-x-2 gap-y-1 mb-4">
+                <!-- Các từ có thể nhấp sẽ được chèn vào đây -->
+            </div>
+            <div id="wordDefinitionOutput" class="p-4 bg-white border border-gray-300 rounded-md hidden">
+                <h3 class="text-lg font-semibold text-gray-800 mb-2" id="definedWord"></h3>
+                <div id="definitionContent" class="text-gray-900">
+                    <!-- Chi tiết định nghĩa sẽ hiển thị ở đây -->
+                </div>
+                <div id="definitionLoadingSpinner" class="loading-spinner mt-2 hidden"></div>
+                <div id="definitionErrorMessage" class="text-red-600 mt-2 hidden"></div>
+            </div>
+        </div>
+
+        <!-- Wiki Dictionary Section -->
+        <div id="wikiDictionarySection" class="mt-8 p-6 bg-gray-50 border border-gray-200 rounded-md">
+            <h2 class="text-xl font-semibold text-gray-800 mb-3">Tra Wiki tiếng Nga (ru.wiktionary.org):</h2>
+            <p class="text-gray-700 text-sm mb-3">Nhấp vào một từ tiếng Nga dưới đây để tra cứu trên Wiktionary:</p>
+            <div id="clickableWordsContainerWiki" class="flex flex-wrap gap-x-2 gap-y-1 mb-4">
+                <!-- Các từ có thể nhấp sẽ được chèn vào đây -->
+            </div>
+            <div id="wikiDefinitionOutput" class="p-4 bg-white border border-gray-300 rounded-md hidden">
+                <h3 class="text-lg font-semibold text-gray-800 mb-2" id="definedWikiWord"></h3>
+                <div id="wikiDefinitionContent" class="text-gray-900">
+                    <!-- Chi tiết định nghĩa Wiki sẽ hiển thị ở đây -->
+                </div>
+                <div id="wikiDefinitionLoadingSpinner" class="loading-spinner mt-2 hidden"></div>
+                <div id="wikiDefinitionErrorMessage" class="text-red-600 mt-2 hidden"></div>
+            </div>
+        </div>
+
+        <!-- YouGlish Section -->
+        <div id="youglishSection" class="mt-8 p-6 bg-gray-50 border border-gray-200 rounded-md">
+            <h2 class="text-xl font-semibold text-gray-800 mb-3">Tra YouGlish tiếng Nga (youglish.com):</h2>
+            <p class="text-gray-700 text-sm mb-3">Nhấp vào một từ tiếng Nga dưới đây để xem video phát âm trên YouGlish:</p>
+            <div id="clickableWordsContainerYouglish" class="flex flex-wrap gap-x-2 gap-y-1 mb-4">
+                <!-- Các từ có thể nhấp sẽ được chèn vào đây -->
+            </div>
+            <div id="youglishOutput" class="p-4 bg-white border border-gray-300 rounded-md hidden">
+                <h3 class="text-lg font-semibold text-gray-800 mb-2" id="definedYouglishWord"></h3>
+                <div id="youglishContent" class="text-gray-900">
+                    <!-- Chi tiết YouGlish sẽ hiển thị ở đây -->
+                </div>
+                <div id="youglishLoadingSpinner" class="loading-spinner mt-2 hidden"></div>
+                <div id="youglishErrorMessage" class="text-red-600 mt-2 hidden"></div>
+            </div>
+        </div>
+
+        <!-- Vocabulary Builder Section -->
+        <div id="vocabularyBuilderSection" class="mt-8 p-6 bg-gray-50 border border-gray-200 rounded-md">
+            <h2 class="text-xl font-semibold text-gray-800 mb-3">✨ Tạo từ vựng theo chủ đề:</h2>
+            <div class="flex flex-col sm:flex-row gap-4 mb-4">
+                <input type="text" id="topicInput"
+                       class="flex-grow p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-200"
+                       placeholder="Nhập chủ đề (ví dụ: du lịch, đồ ăn)">
+                <button id="generateVocabularyButton"
+                        class="bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-200 flex items-center justify-center">
+                    <span id="vocabularyButtonText">Tạo từ vựng</span>
+                    <div id="vocabularyLoadingSpinner" class="loading-spinner ml-3 hidden"></div>
+                </button>
+            </div>
+            <div id="vocabularyOutput" class="p-4 bg-white border border-gray-300 rounded-md hidden">
+                <h3 class="text-lg font-semibold text-gray-800 mb-2">Từ vựng đã tạo:</h3>
+                <ul id="vocabularyList" class="list-disc pl-5 text-gray-900">
+                    <!-- Vocabulary list will be displayed here -->
+                </ul>
+                <div id="vocabularyErrorMessage" class="text-red-600 mt-2 hidden"></div>
+            </div>
+        </div>
+
+        <!-- Sentence Builder Section -->
+        <div id="sentenceBuilderSection" class="mt-8 p-6 bg-gray-50 border border-gray-200 rounded-md">
+            <h2 class="text-xl font-semibold text-gray-800 mb-3">✨ Tạo câu mẫu theo chủ đề từ vựng:</h2>
+            <div class="flex flex-col sm:flex-row gap-4 mb-4">
+                <input type="text" id="sentenceTopicInput"
+                       class="flex-grow p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-200"
+                       placeholder="Nhập chủ đề câu (ví dụ: chào hỏi, mua sắm)">
+                <button id="generateSentenceButton"
+                        class="bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-200 flex items-center justify-center">
+                    <span id="sentenceButtonText">Tạo câu mẫu</span>
+                    <div id="sentenceLoadingSpinner" class="loading-spinner ml-3 hidden"></div>
+                </button>
+            </div>
+            <div id="sentenceOutput" class="p-4 bg-white border border-gray-300 rounded-md hidden">
+                <h3 class="text-lg font-semibold text-gray-800 mb-2">Câu mẫu đã tạo:</h3>
+                <ul id="sentenceList" class="list-disc pl-5 text-gray-900">
+                    <!-- Sentence list will be displayed here -->
+                </ul>
+                <div id="sentenceErrorMessage" class="text-red-600 mt-2 hidden"></div>
+            </div>
+        </div>
+
+        <!-- Russian Learning Resources Section -->
+        <div id="resourcesSection" class="mt-8 p-6 bg-gray-50 border border-gray-200 rounded-md">
+            <h2 class="text-xl font-semibold text-gray-800 mb-3">Tài nguyên học tiếng Nga:</h2>
+            <ul class="list-disc pl-5 text-gray-900">
+                <li class="mb-2">
+                    <a href="https://russiangram.com/" target="_blank" class="text-blue-600 hover:underline">RussianGram.com</a> - Ngữ pháp tiếng Nga dễ hiểu.
+                </li>
+                <li class="mb-2">
+                    <a href="https://www.duolingo.com/course/ru/en/Learn-Russian" target="_blank" class="text-blue-600 hover:underline">Duolingo (Tiếng Nga)</a> - Học tiếng Nga một cách vui vẻ.
+                </li>
+                <li class="mb-2">
+                    <a href="https://www.memrise.com/learn-russian/" target="_blank" class="text-blue-600 hover:underline">Memrise (Tiếng Nga)</a> - Học từ vựng và cụm từ tiếng Nga.
+                </li>
+                <li class="mb-2">
+                    <a href="https://www.youtube.com/c/RussianPod101" target="_blank" class="text-blue-600 hover:underline">RussianPod101 (YouTube)</a> - Các bài học video tiếng Nga.
+                </li>
+            </ul>
+        </div>
+
+    </div>
+
+    <script type="module">
+        // Lấy tham chiếu đến các phần tử DOM
+        const russianInput = document.getElementById('russianInput');
+        const convertButton = document.getElementById('convertButton');
+        const buttonText = document.getElementById('buttonText');
+        const loadingSpinner = document.getElementById('loadingSpinner');
+        const grammarCheckButton = document.getElementById('grammarCheckButton');
+        const grammarButtonText = document.getElementById('grammarButtonText');
+        const grammarLoadingSpinner = document.getElementById('grammarLoadingSpinner');
+        const grammarOutputContainer = document.getElementById('grammarOutputContainer');
+        const correctedSentenceOutput = document.getElementById('correctedSentenceOutput');
+        const grammarErrorMessage = document.getElementById('grammarErrorMessage');
+
+        const speakButton = document.getElementById('speakButton');
+        const speakButtonText = document.getElementById('speakButtonText');
+        const voiceSelect = document.getElementById('voiceSelect');
+        const rateSlider = document.getElementById('rateSlider');
+        const rateValueSpan = document.getElementById('rateValue');
+        const stressedRussianOutput = document.getElementById('stressedRussianOutput');
+        const vietnameseTranslation = document.getElementById('vietnameseTranslation');
+        const clickableWordsContainer = document.getElementById('clickableWordsContainer'); // For vtudien.com
+        const wordDefinitionOutput = document.getElementById('wordDefinitionOutput');
+        const definedWord = document.getElementById('definedWord');
+        const definitionContent = document.getElementById('definitionContent');
+        const definitionLoadingSpinner = document.getElementById('definitionLoadingSpinner');
+        const definitionErrorMessage = document.getElementById('definitionErrorMessage');
+        const errorMessage = document.getElementById('errorMessage');
+
+        const wikiDictionarySection = document.getElementById('wikiDictionarySection');
+        const clickableWordsContainerWiki = document.getElementById('clickableWordsContainerWiki'); // For Wiktionary
+        const wikiDefinitionOutput = document.getElementById('wikiDefinitionOutput');
+        const definedWikiWord = document.getElementById('definedWikiWord');
+        const wikiDefinitionContent = document.getElementById('wikiDefinitionContent');
+        const wikiDefinitionLoadingSpinner = document.getElementById('wikiDefinitionLoadingSpinner');
+        const wikiDefinitionErrorMessage = document.getElementById('wikiDefinitionErrorMessage');
+
+        const youglishSection = document.getElementById('youglishSection');
+        const clickableWordsContainerYouglish = document.getElementById('clickableWordsContainerYouglish'); // For YouGlish
+        const youglishOutput = document.getElementById('youglishOutput');
+        const definedYouglishWord = document.getElementById('definedYouglishWord');
+        const youglishContent = document.getElementById('youglishContent');
+        const youglishLoadingSpinner = document.getElementById('youglishLoadingSpinner');
+        const youglishErrorMessage = document.getElementById('youglishErrorMessage');
+
+
+        const topicInput = document.getElementById('topicInput');
+        const generateVocabularyButton = document.getElementById('generateVocabularyButton');
+        const vocabularyButtonText = document.getElementById('vocabularyButtonText');
+        const vocabularyLoadingSpinner = document.getElementById('vocabularyLoadingSpinner');
+        const vocabularyOutput = document.getElementById('vocabularyOutput');
+        const vocabularyList = document.getElementById('vocabularyList');
+        const vocabularyErrorMessage = document.getElementById('vocabularyErrorMessage');
+
+        const sentenceTopicInput = document.getElementById('sentenceTopicInput');
+        const generateSentenceButton = document.getElementById('generateSentenceButton');
+        const sentenceButtonText = document.getElementById('sentenceButtonText');
+        const sentenceLoadingSpinner = document.getElementById('sentenceLoadingSpinner');
+        const sentenceOutput = document.getElementById('sentenceOutput');
+        const sentenceList = document.getElementById('sentenceList');
+        const sentenceErrorMessage = document.getElementById('sentenceErrorMessage');
+
+
+        let selectedVoice = null; // Biến lưu trữ giọng đọc đã chọn
+        let isSpeaking = false; // Biến theo dõi trạng thái phát âm
+        let currentUtterance = null; // Biến lưu trữ đối tượng SpeechSynthesisUtterance hiện tại
+
+        /**
+         * Xóa tất cả các đầu ra và thông báo lỗi.
+         */
+        function clearOutputs() {
+            stressedRussianOutput.textContent = '';
+            stressedRussianOutput.classList.add('hidden');
+            vietnameseTranslation.textContent = '';
+            clickableWordsContainer.innerHTML = '';
+            clickableWordsContainerWiki.innerHTML = ''; // Clear wiki clickable words too
+            clickableWordsContainerYouglish.innerHTML = ''; // Clear YouGlish clickable words too
+            wordDefinitionOutput.classList.add('hidden');
+            definedWord.textContent = '';
+            definitionContent.innerHTML = '';
+            wikiDefinitionOutput.classList.add('hidden'); // Clear wiki output
+            definedWikiWord.textContent = '';
+            wikiDefinitionContent.innerHTML = '';
+            youglishOutput.classList.add('hidden'); // Clear YouGlish output
+            definedYouglishWord.textContent = '';
+            youglishContent.innerHTML = '';
+            errorMessage.textContent = '';
+            errorMessage.classList.add('hidden');
+            definitionErrorMessage.textContent = '';
+            definitionErrorMessage.classList.add('hidden');
+            wikiDefinitionErrorMessage.textContent = ''; // Clear wiki error
+            wikiDefinitionErrorMessage.classList.add('hidden');
+            youglishErrorMessage.textContent = ''; // Clear YouGlish error
+            youglishErrorMessage.classList.add('hidden');
+            grammarOutputContainer.classList.add('hidden');
+            correctedSentenceOutput.textContent = '';
+            grammarErrorMessage.classList.add('hidden');
+            grammarErrorMessage.textContent = '';
+            vocabularyOutput.classList.add('hidden');
+            vocabularyList.innerHTML = '';
+            vocabularyErrorMessage.classList.add('hidden');
+            vocabularyErrorMessage.textContent = '';
+            sentenceOutput.classList.add('hidden'); // Clear sentence output
+            sentenceList.innerHTML = '';
+            sentenceErrorMessage.classList.add('hidden');
+            sentenceErrorMessage.textContent = '';
+            // Dừng mọi phát âm đang diễn ra khi xóa đầu ra
+            if (window.speechSynthesis.speaking) {
+                window.speechSynthesis.cancel();
+            }
+            isSpeaking = false;
+            speakButtonText.textContent = 'Phát âm';
+        }
+
+        /**
+         * Thực hiện cuộc gọi API đến mô hình Gemini.
+         * @param {string} prompt Lời nhắc gửi đến mô hình.
+         * @param {Object} [generationConfig] Cấu hình tạo tùy chọn cho đầu ra có cấu trúc.
+         * @returns {Promise<string|Object>} Phản hồi văn bản hoặc đối tượng JSON đã phân tích cú pháp từ mô hình.
+         */
+        async function callGeminiAPI(prompt, generationConfig = {}) {
+            let chatHistory = [];
+            chatHistory.push({ role: "user", parts: [{ text: prompt }] });
+
+            const payload = { contents: chatHistory, generationConfig };
+            const apiKey = ""; // Khóa API được cung cấp tự động bởi môi trường Canvas
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                const errorDetail = await response.json();
+                throw new Error(`API Error: ${response.status} ${response.statusText} - ${errorDetail.error.message || 'Unknown error'}`);
+            }
+
+            const result = await response.json();
+
+            if (result.candidates && result.candidates.length > 0 &&
+                result.candidates[0].content && result.candidates[0].content.parts &&
+                result.candidates[0].content.parts.length > 0) {
+                const responseText = result.candidates[0].content.parts[0].text;
+                if (generationConfig.responseMimeType === "application/json") {
+                    try {
+                        return JSON.parse(responseText);
+                    } catch (e) {
+                        console.error("JSON parsing error:", e, "Raw response from API:", responseText); // Added raw response log
+                        throw new Error("Invalid JSON response from API.");
+                    }
+                }
+                return responseText;
+            } else {
+                throw new Error('Unexpected API response structure or missing content.');
+            }
+        }
+
+        /**
+         * Xử lý việc dịch văn bản tiếng Nga sang tiếng Việt và thiết lập tra cứu từ.
+         */
+        convertButton.addEventListener('click', async () => {
+            const text = russianInput.value.trim();
+            clearOutputs(); // Clear all previous outputs
+
+            if (!text) {
+                errorMessage.textContent = 'Vui lòng nhập văn bản tiếng Nga để dịch.';
+                errorMessage.classList.remove('hidden');
+                return;
+            }
+
+            // Hiển thị trạng thái tải cho nút chính
+            buttonText.textContent = 'Đang xử lý...';
+            loadingSpinner.classList.remove('hidden');
+            convertButton.disabled = true;
+            convertButton.classList.add('opacity-70', 'cursor-not-allowed');
+
+            try {
+                // --- 1. Dịch tiếng Nga sang tiếng Việt ---
+                const translationPrompt = `Translate the following Russian text into Vietnamese. Provide only the translation, no additional text or explanations.
+                
+                Text: "${text}"`;
+                const vietTranslation = await callGeminiAPI(translationPrompt);
+                vietnameseTranslation.textContent = vietTranslation;
+
+                // --- 2. Lấy văn bản tiếng Nga có trọng âm ---
+                const stressedRussianPrompt = `Provide the following Russian text with stress marks (ударение). Ensure the stressed vowel is marked with &#x0301; (combining acute accent). Do not make the text all caps. Only provide the text with stress marks, no other explanations or formatting.
+                
+                Text: "${text}"`;
+                const stressedTextRaw = await callGeminiAPI(stressedRussianPrompt);
+                
+                // Assign raw stressed text directly. The &#x0301; character should render correctly above the vowel.
+                stressedRussianOutput.textContent = stressedTextRaw;
+                stressedRussianOutput.classList.remove('hidden');
+
+
+                // --- 3. Thiết lập các từ có thể nhấp để tra từ điển (vtudien.com) ---
+                // Tách từ theo dấu cách hoặc dấu câu.
+                // Regex: \b[а-яА-ЯёЁ]+\b matches Russian words.
+                // /[^\p{L}\p{N}]+/u for splitting by non-letter/non-number characters.
+                // For simplicity and direct link generation, splitting by non-word characters.
+                const words = text.split(/[\s.,!?;:"'()«»-]+/).filter(word => word.length > 0);
+                clickableWordsContainer.innerHTML = ''; // Xóa các từ trước đó
+                clickableWordsContainerWiki.innerHTML = ''; // Xóa các từ Wiki trước đó
+                clickableWordsContainerYouglish.innerHTML = ''; // Xóa các từ YouGlish trước đó
+
+                words.forEach(word => {
+                    // For vtudien.com
+                    const wordSpan = document.createElement('span');
+                    wordSpan.textContent = word;
+                    wordSpan.classList.add('clickable-word', 'py-1', 'px-2', 'rounded-md', 'bg-gray-100', 'hover:bg-gray-200', 'transition', 'duration-150');
+                    wordSpan.addEventListener('click', () => lookupVtudien(word));
+                    clickableWordsContainer.appendChild(wordSpan);
+
+                    // For ru.wiktionary.org
+                    const wordSpanWiki = document.createElement('span');
+                    wordSpanWiki.textContent = word;
+                    wordSpanWiki.classList.add('clickable-word', 'py-1', 'px-2', 'rounded-md', 'bg-gray-100', 'hover:bg-gray-200', 'transition', 'duration-150');
+                    wordSpanWiki.addEventListener('click', () => lookupWiki(word));
+                    clickableWordsContainerWiki.appendChild(wordSpanWiki);
+
+                    // For YouGlish.com
+                    const wordSpanYouglish = document.createElement('span');
+                    wordSpanYouglish.textContent = word;
+                    wordSpanYouglish.classList.add('clickable-word', 'py-1', 'px-2', 'rounded-md', 'bg-gray-100', 'hover:bg-gray-200', 'transition', 'duration-150');
+                    wordSpanYouglish.addEventListener('click', () => lookupYouglish(word));
+                    clickableWordsContainerYouglish.appendChild(wordSpanYouglish);
+                });
+
+            } catch (error) {
+                console.error('Lỗi khi xử lý:', error);
+                errorMessage.textContent = `Đã xảy ra lỗi: ${error.message}. Vui lòng thử lại.`;
+                errorMessage.classList.remove('hidden');
+            } finally {
+                // Đặt lại trạng thái nút
+                buttonText.textContent = 'Dịch & Tra từ';
+                loadingSpinner.classList.add('hidden');
+                convertButton.disabled = false;
+                convertButton.classList.remove('opacity-70', 'cursor-not-allowed');
+            }
+        });
+
+        /**
+         * Xử lý kiểm tra ngữ pháp và cải thiện câu tiếng Nga.
+         */
+        grammarCheckButton.addEventListener('click', async () => {
+            const text = russianInput.value.trim();
+            correctedSentenceOutput.textContent = '';
+            grammarErrorMessage.textContent = '';
+            grammarErrorMessage.classList.add('hidden');
+            grammarOutputContainer.classList.add('hidden'); // Hide until content is ready
+
+            if (!text) {
+                grammarErrorMessage.textContent = 'Vui lòng nhập văn bản tiếng Nga để kiểm tra ngữ pháp.';
+                grammarErrorMessage.classList.remove('hidden');
+                grammarOutputContainer.classList.remove('hidden');
+                return;
+            }
+
+            grammarButtonText.textContent = 'Đang kiểm tra...';
+            grammarLoadingSpinner.classList.remove('hidden');
+            grammarCheckButton.disabled = true;
+            grammarCheckButton.classList.add('opacity-70', 'cursor-not-allowed');
+
+            try {
+                const grammarPrompt = `Correct any grammatical errors and improve the naturalness of the following Russian sentence. Provide only the corrected/improved sentence, no explanations. If no changes are needed, return the original sentence.
+                Sentence: "${text}"`;
+                
+                const correctedText = await callGeminiAPI(grammarPrompt);
+                correctedSentenceOutput.textContent = correctedText;
+                grammarOutputContainer.classList.remove('hidden');
+
+            } catch (error) {
+                console.error('Lỗi khi kiểm tra ngữ pháp:', error);
+                grammarErrorMessage.textContent = `Đã xảy ra lỗi khi kiểm tra ngữ pháp: ${error.message}. Vui lòng thử lại.`;
+                grammarErrorMessage.classList.remove('hidden');
+                grammarOutputContainer.classList.remove('hidden');
+            } finally {
+                grammarButtonText.textContent = '✨ Kiểm tra ngữ pháp & Cải thiện câu';
+                grammarLoadingSpinner.classList.add('hidden');
+                grammarCheckButton.disabled = false;
+                grammarCheckButton.classList.remove('opacity-70', 'cursor-not-allowed');
+            }
+        });
+
+        /**
+         * Khởi tạo các giọng đọc cho tổng hợp giọng nói.
+         */
+        function populateVoiceList() {
+            const voices = window.speechSynthesis.getVoices();
+            voiceSelect.innerHTML = ''; // Xóa các tùy chọn hiện có
+            let defaultRussianVoiceFound = false;
+
+            voices.forEach(voice => {
+                // Chỉ thêm các giọng tiếng Nga
+                if (voice.lang.startsWith('ru-')) {
+                    const option = document.createElement('option');
+                    option.textContent = `${voice.name} (${voice.lang})`;
+                    if (voice.default) {
+                        option.textContent += ' -- Mặc định';
+                    }
+                    option.setAttribute('data-lang', voice.lang);
+                    option.setAttribute('data-name', voice.name);
+                    voiceSelect.appendChild(option);
+
+                    // Cố gắng chọn một giọng tiếng Nga mặc định
+                    if (voice.lang === 'ru-RU' && !defaultRussianVoiceFound) {
+                        voiceSelect.value = option.value;
+                        selectedVoice = voice;
+                        defaultRussianVoiceFound = true;
+                    }
+                }
+            });
+
+            // Nếu không tìm thấy giọng ru-RU, chỉ chọn giọng tiếng Nga đầu tiên nếu có
+            if (!defaultRussianVoiceFound && voiceSelect.options.length > 0) {
+                voiceSelect.value = voiceSelect.options[0].value;
+                const selectedOption = voiceSelect.options[0];
+                const voiceName = selectedOption.getAttribute('data-name');
+                selectedVoice = window.speechSynthesis.getVoices().find(voice => voice.name === voiceName);
+            } else if (voiceSelect.options.length === 0) {
+                // Xử lý trường hợp không có giọng tiếng Nga nào
+                const option = document.createElement('option');
+                option.textContent = 'Không có giọng tiếng Nga nào khả dụng trên hệ thống của bạn.';
+                option.disabled = true;
+                voiceSelect.appendChild(option);
+                speakButton.disabled = true; // Vô hiệu hóa nút phát âm nếu không có giọng
+                console.warn('Không tìm thấy giọng tiếng Nga nào khả dụng. Chức năng phát âm sẽ bị vô hiệu hóa.'); // Explicit warning
+            }
+        }
+
+        // Tải giọng đọc khi chúng sẵn sàng
+        if (speechSynthesis.onvoiceschanged !== undefined) {
+            speechSynthesis.onvoiceschanged = populateVoiceList;
+        } else {
+            // Dự phòng cho các trình duyệt không kích hoạt onvoiceschanged ngay lập tức
+            populateVoiceList();
+        }
+
+        // Trình nghe sự kiện cho thay đổi lựa chọn giọng đọc
+        voiceSelect.addEventListener('change', () => {
+            const selectedOption = voiceSelect.options[voiceSelect.selectedIndex];
+            const voiceName = selectedOption.getAttribute('data-name');
+            selectedVoice = window.speechSynthesis.getVoices().find(voice => voice.name === voiceName);
+            // Tùy chỉnh giọng đọc được áp dụng ngay lập tức
+            if (isSpeaking && currentUtterance && !window.speechSynthesis.paused) {
+                window.speechSynthesis.cancel(); // Hủy bỏ utterance hiện tại
+                startSpeaking(); // Bắt đầu lại với giọng mới
+            }
+        });
+
+        // Trình nghe sự kiện cho thay đổi thanh trượt tốc độ
+        rateSlider.addEventListener('input', () => {
+            rateValueSpan.textContent = `${rateSlider.value}x`;
+            // Tốc độ đọc được áp dụng ngay lập tức
+            if (isSpeaking && currentUtterance && !window.speechSynthesis.paused) {
+                window.speechSynthesis.cancel(); // Hủy bỏ utterance hiện tại
+                startSpeaking(); // Bắt đầu lại với tốc độ mới
+            }
+        });
+
+        /**
+         * Bắt đầu phát âm văn bản tiếng Nga.
+         */
+        function startSpeaking() {
+            const textToSpeak = russianInput.value.trim();
+            if (!textToSpeak) {
+                errorMessage.textContent = 'Không có văn bản để phát âm.';
+                errorMessage.classList.remove('hidden');
+                isSpeaking = false;
+                speakButtonText.textContent = 'Phát âm';
+                return;
+            }
+
+            // Nếu đang tạm dừng, tiếp tục
+            if (window.speechSynthesis.paused && currentUtterance) {
+                window.speechSynthesis.resume();
+                isSpeaking = true;
+                speakButtonText.textContent = 'Dừng phát âm';
+                return;
+            }
+
+            // Nếu đang nói hoặc không có utterance mới, tạo utterance mới
+            if (!window.speechSynthesis.speaking || !currentUtterance) {
+                currentUtterance = new SpeechSynthesisUtterance(textToSpeak);
+                currentUtterance.lang = 'ru-RU'; // Đảm bảo ngôn ngữ là tiếng Nga
+                if (selectedVoice) {
+                    currentUtterance.voice = selectedVoice;
+                }
+                currentUtterance.rate = parseFloat(rateSlider.value); // Đặt tốc độ nói
+
+                currentUtterance.onstart = () => {
+                    isSpeaking = true;
+                    speakButtonText.textContent = 'Dừng phát âm';
+                    errorMessage.classList.add('hidden'); // Clear error on start
+                };
+                currentUtterance.onend = () => {
+                    isSpeaking = false;
+                    speakButtonText.textContent = 'Phát âm';
+                    currentUtterance = null; // Reset utterance after it ends
+                };
+                currentUtterance.onerror = (event) => {
+                    console.error('SpeechSynthesisUtterance.onerror', event);
+                    isSpeaking = false;
+                    speakButtonText.textContent = 'Phát âm';
+                    currentUtterance = null; // Reset utterance on error
+                    let errorMsg = 'Lỗi phát âm: ';
+                    switch (event.error) {
+                        case 'network':
+                            errorMsg += 'Lỗi mạng. Vui lòng kiểm tra kết nối internet của bạn.';
+                            break;
+                        case 'synthesis-failed':
+                            errorMsg += 'Quá trình tổng hợp giọng nói thất bại.';
+                            break;
+                        case 'synthesis-unavailable':
+                            errorMsg += 'Dịch vụ tổng hợp giọng nói không khả dụng.';
+                            break;
+                        case 'language-unsupported':
+                            errorMsg += 'Ngôn ngữ tiếng Nga không được hỗ trợ bởi giọng đọc đã chọn hoặc trình duyệt của bạn.';
+                            break;
+                        case 'voice-unavailable':
+                            errorMsg += 'Giọng đọc đã chọn không khả dụng.';
+                            break;
+                        default:
+                            errorMsg += `Lỗi không xác định: ${event.error}.`;
+                    }
+                    errorMessage.textContent = errorMsg;
+                    errorMessage.classList.remove('hidden');
+                };
+
+                window.speechSynthesis.speak(currentUtterance);
+            }
+        }
+
+        /**
+         * Xử lý phát âm văn bản tiếng Nga bằng Web Speech API.
+         */
+        speakButton.addEventListener('click', () => {
+            if (window.speechSynthesis.speaking && !window.speechSynthesis.paused) {
+                window.speechSynthesis.pause(); // Tạm dừng phát âm
+                isSpeaking = false;
+                speakButtonText.textContent = 'Tiếp tục phát âm';
+            } else if (window.speechSynthesis.paused) {
+                window.speechSynthesis.resume(); // Tiếp tục phát âm
+                isSpeaking = true;
+                speakButtonText.textContent = 'Dừng phát âm';
+            } else {
+                startSpeaking(); // Bắt đầu phát âm mới
+            }
+        });
+
+        /**
+         * Tra cứu định nghĩa của một từ đã cho bằng cách mở liên kết đến vtudien.com.
+         * @param {string} word Từ cần tra cứu.
+         */
+        async function lookupVtudien(word) {
+            definedWord.textContent = `Đang mở từ điển cho: "${word}"`;
+            definitionContent.innerHTML = '';
+            definitionErrorMessage.textContent = '';
+            definitionErrorMessage.classList.add('hidden');
+            wordDefinitionOutput.classList.remove('hidden');
+            definitionLoadingSpinner.classList.add('hidden'); // Action is instant, hide spinner
+
+            try {
+                // Encode the word for URL to handle special characters correctly
+                const encodedWord = encodeURIComponent(word);
+                const vtudienUrl = `https://vtudien.com/nga-viet/dictionary/nghia-cua-tu-${encodedWord}`;
+                
+                let htmlContent = `
+                    <p class="definition-item">Nhấp vào đây để xem chi tiết nghĩa của từ "${word}" trên:</p>
+                    <a href="${vtudienUrl}" target="_blank" class="text-blue-600 hover:underline font-semibold text-lg">vtudien.com/nga-viet</a>
+                    <p class="text-sm text-gray-500 mt-2">Trang web sẽ mở trong một tab mới.</p>
+                `;
+                
+                definitionContent.innerHTML = htmlContent;
+                window.open(vtudienUrl, '_blank'); // Open the tab immediately
+
+            } catch (error) {
+                console.error(`Lỗi khi tạo liên kết tra cứu từ "${word}" trên vtudien.com:`, error);
+                definitionErrorMessage.textContent = `Không thể mở liên kết tra cứu cho từ "${word}" trên vtudien.com: ${error.message}. Vui lòng kiểm tra cài đặt chặn pop-up.`;
+                definitionErrorMessage.classList.remove('hidden');
+                definedWord.textContent = `Lỗi tra cứu từ "${word}"`;
+                definitionContent.innerHTML = '';
+            } finally {
+                // No loading spinner to hide here, as it was hidden at the start.
+            }
+        }
+
+        /**
+         * Tra cứu định nghĩa của một từ đã cho bằng cách mở liên kết đến ru.wiktionary.org.
+         * @param {string} word Từ cần tra cứu.
+         */
+        async function lookupWiki(word) {
+            definedWikiWord.textContent = `Đang mở Wiki cho: "${word}"`;
+            wikiDefinitionContent.innerHTML = '';
+            wikiDefinitionErrorMessage.textContent = '';
+            wikiDefinitionErrorMessage.classList.add('hidden');
+            wikiDefinitionOutput.classList.remove('hidden');
+            wikiDefinitionLoadingSpinner.classList.add('hidden'); // Action is instant, hide spinner
+
+            try {
+                // Encode the word for URL to handle special characters correctly
+                const encodedWord = encodeURIComponent(word);
+                const wiktionaryUrl = `https://ru.wiktionary.org/wiki/${encodedWord}`;
+                
+                let htmlContent = `
+                    <p class="definition-item">Nhấp vào đây để xem chi tiết nghĩa của từ "${word}" trên:</p>
+                    <a href="${wiktionaryUrl}" target="_blank" class="text-blue-600 hover:underline font-semibold text-lg">ru.wiktionary.org/wiki</a>
+                    <p class="text-sm text-gray-500 mt-2">Trang web sẽ mở trong một tab mới.</p>
+                `;
+                
+                wikiDefinitionContent.innerHTML = htmlContent;
+                window.open(wiktionaryUrl, '_blank'); // Open the tab immediately
+
+            } catch (error) {
+                console.error(`Lỗi khi tạo liên kết tra cứu từ "${word}" trên ru.wiktionary.org:`, error);
+                wikiDefinitionErrorMessage.textContent = `Không thể mở liên kết tra cứu cho từ "${word}" trên ru.wiktionary.org: ${error.message}. Vui lòng kiểm tra cài đặt chặn pop-up.`;
+                wikiDefinitionErrorMessage.classList.remove('hidden');
+                definedWikiWord.textContent = `Lỗi tra cứu từ "${word}"`;
+                wikiDefinitionContent.innerHTML = '';
+            } finally {
+                // No loading spinner to hide here, as it was hidden at the start.
+            }
+        }
+
+        /**
+         * Tra cứu phát âm của một từ đã cho bằng cách mở liên kết đến youglish.com.
+         * @param {string} word Từ cần tra cứu.
+         */
+        async function lookupYouglish(word) {
+            definedYouglishWord.textContent = `Đang mở YouGlish cho: "${word}"`;
+            youglishContent.innerHTML = '';
+            youglishErrorMessage.textContent = '';
+            youglishErrorMessage.classList.add('hidden');
+            youglishOutput.classList.remove('hidden');
+            youglishLoadingSpinner.classList.add('hidden'); // Action is instant, hide spinner
+
+            try {
+                // Encode the word for URL to handle special characters correctly
+                const encodedWord = encodeURIComponent(word);
+                const youglishUrl = `https://youglish.com/pronounce/${encodedWord}/russian`;
+                
+                let htmlContent = `
+                    <p class="definition-item">Nhấp vào đây để xem video phát âm của từ "${word}" trên:</p>
+                    <a href="${youglishUrl}" target="_blank" class="text-blue-600 hover:underline font-semibold text-lg">youglish.com</a>
+                    <p class="text-sm text-gray-500 mt-2">Trang web sẽ mở trong một tab mới.</p>
+                `;
+                
+                youglishContent.innerHTML = htmlContent;
+                window.open(youglishUrl, '_blank'); // Open the tab immediately
+
+            } catch (error) {
+                console.error(`Lỗi khi tạo liên kết tra cứu từ "${word}" trên youglish.com:`, error);
+                youglishErrorMessage.textContent = `Không thể mở liên kết tra cứu cho từ "${word}" trên youglish.com: ${error.message}. Vui lòng kiểm tra cài đặt chặn pop-up.`;
+                youglishErrorMessage.classList.remove('hidden');
+                definedYouglishWord.textContent = `Lỗi tra cứu từ "${word}"`;
+                youglishContent.innerHTML = '';
+            } finally {
+                // No loading spinner to hide here, as it was hidden at the start.
+            }
+        }
+
+        /**
+         * Xử lý tạo từ vựng theo chủ đề.
+         */
+        generateVocabularyButton.addEventListener('click', async () => {
+            const topic = topicInput.value.trim();
+            vocabularyList.innerHTML = '';
+            vocabularyErrorMessage.textContent = '';
+            vocabularyErrorMessage.classList.add('hidden');
+            vocabularyOutput.classList.add('hidden');
+
+            if (!topic) {
+                vocabularyErrorMessage.textContent = 'Vui lòng nhập một chủ đề để tạo từ vựng.';
+                vocabularyErrorMessage.classList.remove('hidden');
+                vocabularyOutput.classList.remove('hidden');
+                return;
+            }
+
+            vocabularyButtonText.textContent = 'Đang tạo...';
+            vocabularyLoadingSpinner.classList.remove('hidden');
+            generateVocabularyButton.disabled = true;
+            generateVocabularyButton.classList.add('opacity-70', 'cursor-not-allowed');
+
+            try {
+                const vocabularyPrompt = `Generate a list of 10 common Russian vocabulary words related to the topic "${topic}". For each word, provide its Vietnamese translation.
+                Format the response as a JSON array of objects, where each object has "russianWord" (string) and "vietnameseTranslation" (string) keys.`;
+                
+                const generationConfig = {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: "ARRAY",
+                        items: {
+                            type: "OBJECT",
+                            properties: {
+                                "russianWord": { "type": "STRING" },
+                                "vietnameseTranslation": { "type": "STRING" }
+                            },
+                            required: ["russianWord", "vietnameseTranslation"]
+                        }
+                    }
+                };
+
+                const vocabularyData = await callGeminiAPI(vocabularyPrompt, generationConfig);
+
+                if (vocabularyData && vocabularyData.length > 0) {
+                    vocabularyData.forEach(item => {
+                        const listItem = document.createElement('li');
+                        listItem.textContent = `${item.russianWord}: ${item.vietnameseTranslation}`;
+                        vocabularyList.appendChild(listItem);
+                    });
+                    vocabularyOutput.classList.remove('hidden');
+                } else {
+                    vocabularyErrorMessage.textContent = 'Không thể tạo từ vựng cho chủ đề này. Vui lòng thử lại.';
+                    vocabularyErrorMessage.classList.remove('hidden');
+                    vocabularyOutput.classList.remove('hidden');
+                }
+
+            } catch (error) {
+                console.error('Lỗi khi tạo từ vựng:', error);
+                vocabularyErrorMessage.textContent = `Đã xảy ra lỗi khi tạo từ vựng: ${error.message}. Vui lòng thử lại.`;
+                vocabularyErrorMessage.classList.remove('hidden');
+                vocabularyOutput.classList.remove('hidden');
+            } finally {
+                vocabularyButtonText.textContent = 'Tạo từ vựng';
+                vocabularyLoadingSpinner.classList.add('hidden');
+                generateVocabularyButton.disabled = false;
+                generateVocabularyButton.classList.remove('opacity-70', 'cursor-not-allowed');
+            }
+        });
+
+        /**
+         * Xử lý tạo câu mẫu theo chủ đề từ vựng.
+         */
+        generateSentenceButton.addEventListener('click', async () => {
+            const topic = sentenceTopicInput.value.trim();
+            sentenceList.innerHTML = '';
+            sentenceErrorMessage.textContent = '';
+            sentenceErrorMessage.classList.add('hidden');
+            sentenceOutput.classList.add('hidden');
+
+            if (!topic) {
+                sentenceErrorMessage.textContent = 'Vui lòng nhập một chủ đề để tạo câu mẫu.';
+                sentenceErrorMessage.classList.remove('hidden');
+                sentenceOutput.classList.remove('hidden');
+                return;
+            }
+
+            sentenceButtonText.textContent = 'Đang tạo...';
+            sentenceLoadingSpinner.classList.remove('hidden');
+            generateSentenceButton.disabled = true;
+            generateSentenceButton.classList.add('opacity-70', 'cursor-not-allowed');
+
+            try {
+                const sentencePrompt = `Generate 3-5 common Russian sentences related to the topic "${topic}". For each sentence, provide its Vietnamese translation.
+                Format the response as a JSON array of objects, where each object has "russianSentence" (string) and "vietnameseTranslation" (string) keys.`;
+                
+                const generationConfig = {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: "ARRAY",
+                        items: {
+                            type: "OBJECT",
+                            properties: {
+                                "russianSentence": { "type": "STRING" },
+                                "vietnameseTranslation": { "type": "STRING" }
+                            },
+                            required: ["russianSentence", "vietnameseTranslation"]
+                        }
+                    }
+                };
+
+                const sentenceData = await callGeminiAPI(sentencePrompt, generationConfig);
+
+                if (sentenceData && sentenceData.length > 0) {
+                    sentenceData.forEach(item => {
+                        const listItem = document.createElement('li');
+                        listItem.innerHTML = `<strong>${item.russianSentence}</strong>: ${item.vietnameseTranslation}`;
+                        sentenceList.appendChild(listItem);
+                    });
+                    sentenceOutput.classList.remove('hidden');
+                } else {
+                    sentenceErrorMessage.textContent = 'Không thể tạo câu mẫu cho chủ đề này. Vui lòng thử lại.';
+                    sentenceErrorMessage.classList.remove('hidden');
+                    sentenceOutput.classList.remove('hidden');
+                }
+
+            } catch (error) {
+                console.error('Lỗi khi tạo câu mẫu:', error);
+                sentenceErrorMessage.textContent = `Đã xảy ra lỗi khi tạo câu mẫu: ${error.message}. Vui lòng thử lại.`;
+                sentenceErrorMessage.classList.remove('hidden');
+                sentenceOutput.classList.remove('hidden');
+            } finally {
+                sentenceButtonText.textContent = 'Tạo câu mẫu';
+                sentenceLoadingSpinner.classList.add('hidden');
+                generateSentenceButton.disabled = false;
+                generateSentenceButton.classList.remove('opacity-70', 'cursor-not-allowed');
+            }
+        });
+    </script>
+</body>
+</html>
